@@ -1,3 +1,8 @@
+# vaccine-api-test
+
+- Project to test: Flamby (Government module)
+- Endpoint to test: create reservation (/reservation, method: POST) and login (/login, method: POST)
+
 | Test Case ID | Name | Description |
 |--------------|------|-------------|
 |    TC-01     | test_create_reservation_but_not_login() | Verify that no one can not create any reservation if they not login |
