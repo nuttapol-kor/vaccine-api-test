@@ -1,5 +1,6 @@
 import unittest
 import requests
+import jwt
 
 URL = "https://flamxby.herokuapp.com"
 
@@ -14,6 +15,7 @@ def login():
     return token
 
 class TestCreateReservation(unittest.TestCase):
+    """Create reservation"""
 
     def setUp(self):
         """Initialize necessary variable"""
@@ -69,6 +71,64 @@ class TestCreateReservation(unittest.TestCase):
         response = requests.post(self.endpoint, json=request_body, headers={"Accept": "application/json", "Authorization": f"Bearer {access_token}"})
         self.assertEqual(response.status_code, 422)
         self.assertEqual(response.headers["Content-Type"], "application/json")
+        self.assertEqual(response.json()["detail"][0]["msg"], "field required")
+
+class TestLogin(unittest.TestCase):
+    """Login test"""
+
+    def setUp(self):
+        """Initialize necessary variable"""
+        self.endpoint = URL + "/login"
+
+    def test_login_with_valid_id(self):
+        """Test with account on the database (real account)"""
+        request_body = {
+            "username": "1234567848204",
+            "password": "nice_password"
+        }
+        response = requests.post(self.endpoint, data=request_body, headers={"Content-Type": "application/x-www-form-urlencoded"})
+        token = response.json().get("access_token")
+        token_type = response.json().get("token_type")
+        decode_token = jwt.decode(token, options={"verify_signature": False})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(token_type, "bearer")
+        self.assertEqual(request_body["username"], decode_token["sub"])
+
+    def test_login_with_username_is_not_a_digit(self):
+        """Username is the database must be a 13-digit (citizen id)"""
+        request_body = {
+            "username": "Real username",
+            "password": "Real password"
+        }
+        response = requests.post(self.endpoint, data=request_body, headers={"Content-Type": "application/x-www-form-urlencoded"})
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.text, "Internal Server Error")
+
+    def test_login_with_username_not_a_13_digit(self):
+        """Username is the database must be a 13-digit (citizen id)"""
+        request_body = {
+            "username": "123",
+            "password": "Real password"
+        }
+        response = requests.post(self.endpoint, data=request_body, headers={"Content-Type": "application/x-www-form-urlencoded"})
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.text, "Internal Server Error")
+
+    def test_login_with_a_wrong_password(self):
+        """Wrong password should not get the access token"""
+        request_body = {
+            "username": "1234567848204",
+            "password": "not_nice_password"
+        }
+        response = requests.post(self.endpoint, data=request_body, headers={"Content-Type": "application/x-www-form-urlencoded"})
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()["detail"], "Incorrect password")
+
+    def test_login_with_empty_request_body(self):
+        """Request body required username and password field"""
+        request_body = {}
+        response = requests.post(self.endpoint, data=request_body, headers={"Content-Type": "application/x-www-form-urlencoded"})
+        self.assertEqual(response.status_code, 422)
         self.assertEqual(response.json()["detail"][0]["msg"], "field required")
 
 if __name__ == '__main__':
